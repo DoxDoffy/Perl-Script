@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+
+use strict;
+use Carp;
+use Data::Dumper;
+use File::Basename;
+
+# Prompt the user for the name of the log file
+print "Enter the name of the log file: ";
+my $log_file = <STDIN>;
+chomp $log_file;
+
+# Define the paths for the success and failed directories
+my $success_dir = "./success";
+my $failed_dir = "./failed";
+
+# Create the success and failed directories if they don't exist
+mkdir $success_dir unless -d $success_dir;
+mkdir $failed_dir unless -d $failed_dir;
+
+# Open the log file for reading
+open my $log_fh, '<', $log_file or croak "Failed to open $log_file: $!";
+
+# Loop through the log file
+while (my $line = <$log_fh>) {
+    chomp $line;
+
+    # Skip empty lines
+    next if $line =~ /^\s*$/;
+
+    # Get the file name from the log line
+    my ($file_name) = $line =~ /\[(\S+)\]/;
+
+    # Copy the file to the success or failed directory depending on the log line
+    if ($line =~ /SUCCESS/) {
+        my $success_path = "$success_dir/" . basename($file_name);
+        my $copy_result = `cp $file_name $success_path`;
+        if ($copy_result) {
+            print "Successfully copied $file_name to $success_path\n";
+        } else {
+            croak "Failed to copy $file_name to $success_path: $!\n";
+        }
+        print Dumper($copy_result);
+    } elsif ($line =~ /FAILED/) {
+        my $failed_path = "$failed_dir/" . basename($file_name);
+        my $move_result = `mv $file_name $failed_path`;
+        if ($move_result) {
+            print "Successfully moved $file_name to $failed_path\n";
+        } else {
+            croak "Failed to move $file_name to $failed_path: $!\n";
+        }
+        print Dumper($move_result);
+    } else {
+        carp "Unknown log line: $line\n";
+    }
+}
+
+# Close the log file
+close $log_fh;
+
+
+#
+if (!-d $success_dir) {
+    mkdir $success_dir;
+}
+
+if (!-d $failed_dir) {
+    mkdir $failed_dir;
+}
+
